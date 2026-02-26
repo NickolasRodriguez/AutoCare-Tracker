@@ -11,6 +11,7 @@ public class AddEditTaskActivity extends AppCompatActivity {
 
     private EditText editTaskName, editVehicleType, editServiceDate, editMileage, editNotes;
     private Button btnSave, btnCancel;
+    private int taskId = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +27,18 @@ public class AddEditTaskActivity extends AppCompatActivity {
 
         btnSave = findViewById(R.id.btnSave);
         btnCancel = findViewById(R.id.btnCancel);
+
+        Intent intent = getIntent();
+
+        if (intent.hasExtra("id")) {
+            taskId = intent.getIntExtra("id", -1);
+
+            editTaskName.setText(intent.getStringExtra("taskName"));
+            editVehicleType.setText(intent.getStringExtra("vehicleType"));
+            editServiceDate.setText(intent.getStringExtra("serviceDate"));
+            editMileage.setText(String.valueOf(intent.getIntExtra("mileage", 0)));
+            editNotes.setText(intent.getStringExtra("notes"));
+        }
 
         // Save button: validate + return data to MainActivity
         btnSave.setOnClickListener(v -> {
@@ -70,6 +83,7 @@ public class AddEditTaskActivity extends AppCompatActivity {
             resultIntent.putExtra("serviceDate", serviceDate);
             resultIntent.putExtra("mileage", mileage);
             resultIntent.putExtra("notes", notes);
+            resultIntent.putExtra("id", taskId);
 
             setResult(RESULT_OK, resultIntent);
             finish();

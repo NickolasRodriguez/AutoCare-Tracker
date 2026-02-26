@@ -27,11 +27,10 @@ public class MainActivity extends AppCompatActivity {
     private final List<MaintenanceTask> tasks = new ArrayList<>();
     private FloatingActionButton fabAdd;
 
-    private AppDatabase db;
     private TaskDao taskDao;
-
     private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
-    private ActivityResultLauncher<Intent> addTaskLauncher;
+
+    private ActivityResultLauncher<Intent> addEditLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,48 +41,75 @@ public class MainActivity extends AppCompatActivity {
         fabAdd = findViewById(R.id.fabAdd);
 
         // Room
-        db = AppDatabase.getInstance(this);
+        AppDatabase db = AppDatabase.getInstance(this);
         taskDao = db.taskDao();
 
-        // RecyclerView
-        adapter = new MaintenanceAdapter(tasks);
-        recyclerTasks.setLayoutManager(new LinearLayoutManager(this));
-        recyclerTasks.setAdapter(adapter);
-
-        // ✅ Observe Room data (auto-refresh list)
-        taskDao.getAllTasksLive().observe(this, dbTasks -> {
-            tasks.clear();
-            if (dbTasks != null) tasks.addAll(dbTasks);
-            adapter.notifyDataSetChanged();
-        });
-
-        // Result launcher for AddEditTaskActivity
-        addTaskLauncher = registerForActivityResult(
+        //  Register launcher FIRST
+        addEditLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         Intent data = result.getData();
 
+                        int id = data.getIntExtra("id", -1);
                         String taskName = data.getStringExtra("taskName");
                         String vehicleType = data.getStringExtra("vehicleType");
                         String serviceDate = data.getStringExtra("serviceDate");
                         int mileage = data.getIntExtra("mileage", 0);
                         String notes = data.getStringExtra("notes");
 
-                        MaintenanceTask newTask =
-                                new MaintenanceTask(taskName, vehicleType, serviceDate, mileage, notes);
+                        MaintenanceTask task = new MaintenanceTask(taskName, vehicleType, serviceDate, mileage, notes);
 
-                        // ✅ Insert off the main thread
-                        dbExecutor.execute(() -> taskDao.insert(newTask));
-                        // No manual refresh needed; LiveData observer updates UI automatically.
+                        if (id == -1) {
+                            dbExecutor.execute(() -> taskDao.insert(task));
+                        } else {
+                            task.id = id;
+                            dbExecutor.execute(() -> taskDao.update(task));
+                        }
                     }
                 }
         );
 
-        // FAB opens Add/Edit screen and expects a result
+        // RecyclerView + click to edit (uses the launcher that now exists)
+        adapter = new MaintenanceAdapter(tasks, new MaintenanceAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(MaintenanceTask task) {
+                // EDIT
+                Intent intent = new Intent(MainActivity.this, AddEditTaskActivity.class);
+
+                intent.putExtra("id", task.id);
+                intent.putExtra("taskName", task.taskName);
+                intent.putExtra("vehicleType", task.vehicleType);
+                intent.putExtra("serviceDate", task.serviceDate);
+                intent.putExtra("mileage", task.mileage);
+                intent.putExtra("notes", task.notes);
+
+                addEditLauncher.launch(intent);
+            }
+
+            @Override
+            public void onDeleteClick(MaintenanceTask task) {
+                // DELETE
+                dbExecutor.execute(() -> taskDao.delete(task));
+            }
+        });
+
+        recyclerTasks.setLayoutManager(new LinearLayoutManager(this));
+        recyclerTasks.setAdapter(adapter);
+
+        // Observe Room database changes
+        taskDao.getAllTasksLive().observe(this, dbTasks -> {
+            tasks.clear();
+            if (dbTasks != null) {
+                tasks.addAll(dbTasks);
+            }
+            adapter.notifyDataSetChanged();
+        });
+
+        // FAB = Add new task
         fabAdd.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AddEditTaskActivity.class);
-            addTaskLauncher.launch(intent);
+            addEditLauncher.launch(intent);
         });
     }
 
