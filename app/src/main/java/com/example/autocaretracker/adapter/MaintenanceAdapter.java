@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,10 +16,17 @@ import java.util.List;
 
 public class MaintenanceAdapter extends RecyclerView.Adapter<MaintenanceAdapter.TaskViewHolder> {
 
-    private List<MaintenanceTask> tasks;
+    public interface OnItemClickListener {
+        void onItemClick(MaintenanceTask task);
+        void onDeleteClick(MaintenanceTask task);
+    }
 
-    public MaintenanceAdapter(List<MaintenanceTask> tasks) {
+    private final List<MaintenanceTask> tasks;
+    private final OnItemClickListener listener;
+
+    public MaintenanceAdapter(List<MaintenanceTask> tasks, OnItemClickListener listener) {
         this.tasks = tasks;
+        this.listener = listener;
     }
 
     @NonNull
@@ -33,9 +41,24 @@ public class MaintenanceAdapter extends RecyclerView.Adapter<MaintenanceAdapter.
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
         MaintenanceTask task = tasks.get(position);
 
+        // Bind data (using your public fields)
         holder.taskName.setText(task.taskName);
         holder.vehicle.setText(task.vehicleType);
         holder.dateMileage.setText(task.serviceDate + " - " + task.mileage + " miles");
+
+        // Row click = Edit
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(task);
+            }
+        });
+
+        // Trash click = Delete
+        holder.btnDelete.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onDeleteClick(task);
+            }
+        });
     }
 
     @Override
@@ -46,6 +69,7 @@ public class MaintenanceAdapter extends RecyclerView.Adapter<MaintenanceAdapter.
     static class TaskViewHolder extends RecyclerView.ViewHolder {
 
         TextView taskName, vehicle, dateMileage;
+        ImageButton btnDelete;
 
         public TaskViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -53,6 +77,7 @@ public class MaintenanceAdapter extends RecyclerView.Adapter<MaintenanceAdapter.
             taskName = itemView.findViewById(R.id.textTaskName);
             vehicle = itemView.findViewById(R.id.textVehicle);
             dateMileage = itemView.findViewById(R.id.textDateMileage);
+            btnDelete = itemView.findViewById(R.id.btnDelete);
         }
     }
 }
