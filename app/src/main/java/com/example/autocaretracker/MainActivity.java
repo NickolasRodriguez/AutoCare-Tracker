@@ -2,10 +2,12 @@ package com.example.autocaretracker;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -23,6 +25,7 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerTasks;
+    private TextView textEmptyState;
     private MaintenanceAdapter adapter;
     private final List<MaintenanceTask> tasks = new ArrayList<>();
     private FloatingActionButton fabAdd;
@@ -36,6 +39,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        textEmptyState = findViewById(R.id.textEmptyState);
 
         recyclerTasks = findViewById(R.id.recyclerTasks);
         fabAdd = findViewById(R.id.fabAdd);
@@ -74,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
         adapter = new MaintenanceAdapter(tasks, new MaintenanceAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(MaintenanceTask task) {
-                // EDIT
                 Intent intent = new Intent(MainActivity.this, AddEditTaskActivity.class);
 
                 intent.putExtra("id", task.id);
@@ -89,8 +93,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDeleteClick(MaintenanceTask task) {
-                // DELETE
-                dbExecutor.execute(() -> taskDao.delete(task));
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Delete Task")
+                        .setMessage("Are you sure you want to delete this maintenance task?")
+                        .setPositiveButton("Delete", (dialog, which) ->
+                                dbExecutor.execute(() -> taskDao.delete(task)))
+                        .setNegativeButton("Cancel", null)
+                        .show();
             }
         });
 
@@ -99,11 +108,23 @@ public class MainActivity extends AppCompatActivity {
 
         // Observe Room database changes
         taskDao.getAllTasksLive().observe(this, dbTasks -> {
+
             tasks.clear();
+
             if (dbTasks != null) {
                 tasks.addAll(dbTasks);
             }
+
             adapter.notifyDataSetChanged();
+
+            // Show or hide empty message
+            if (tasks.isEmpty()) {
+                textEmptyState.setVisibility(TextView.VISIBLE);
+                recyclerTasks.setVisibility(RecyclerView.GONE);
+            } else {
+                textEmptyState.setVisibility(TextView.GONE);
+                recyclerTasks.setVisibility(RecyclerView.VISIBLE);
+            }
         });
 
         // FAB = Add new task

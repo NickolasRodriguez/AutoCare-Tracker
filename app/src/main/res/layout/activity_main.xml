@@ -5,6 +5,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <TextView
+        android:id="@+id/textEmptyState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No maintenance tasks yet.\nTap + to add one."
+        android:textAlignment="center"
+        android:textSize="16sp"
+        android:padding="24dp"
+        android:visibility="gone"/>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerTasks"
         android:layout_width="0dp"
